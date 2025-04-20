@@ -1,55 +1,55 @@
 # Simple MCP FileServer
 
-一个轻量级的 MCP (Model Context Protocol) 文件系统服务器，用于 AI 代理（如 Codeium、Claude、Windsurf 等）与本地文件系统的交互。
+A lightweight Model Context Protocol (MCP) file system server for AI agents (like Codeium, Claude, Windsurf, etc.) to interact with the local file system.
 
-## 功能特点
+## Features
 
-- **文件操作**：
-  - 读取文件内容 (`readFile` 方法)
-  - 写入或覆盖文件内容 (`writeFile` 方法)
-  - 列出目录内容 (`listDir` 方法)
-- **MCP 协议兼容**：
-  - 完全兼容 JSON-RPC 2.0 协议
-  - 支持 `initialize` 方法，返回服务能力
-  - 详细的错误处理和日志
-- **跨域支持**：内置 CORS 支持，便于 Web 客户端集成
-- **健康检查**：提供 `/health` 端点，方便监控和探测
+- **File Operations**:
+  - Read file content (`readFile` method)
+  - Write or overwrite file content (`writeFile` method)
+  - List directory contents (`listDir` method)
+- **MCP Protocol Compatibility**:
+  - Full JSON-RPC 2.0 protocol compatibility
+  - Supports `initialize` method with capability reporting
+  - Detailed error handling and logging
+- **CORS Support**: Built-in cross-origin support for web client integration
+- **Health Check**: Provides a `/health` endpoint for monitoring and probing
 
-## 安装
+## Installation
 
-1. 克隆仓库：
+1. Clone the repository:
    ```bash
    git clone https://github.com/yourusername/simple-mcp-fileserver.git
    cd simple-mcp-fileserver
    ```
 
-2. 安装依赖：
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-## 配置
+## Configuration
 
-服务器配置非常灵活，支持以下环境变量：
+The server configuration is flexible and supports the following environment variables:
 
-- `PORT` 或 `MCP_PORT`：指定服务器监听端口（默认：8090）
+- `PORT` or `MCP_PORT`: Specify the server listening port (default: 8090)
 
-## 使用方法
+## Usage
 
-### 方法一：直接启动
+### Method 1: Direct Launch
 
 ```bash
 node simple-mcp-fileserver.js
 ```
 
-自定义端口：
+With custom port:
 ```bash
 PORT=9000 node simple-mcp-fileserver.js
 ```
 
-### 方法二：在 MCP Orchestrator 中配置
+### Method 2: Configure in MCP Orchestrator
 
-在 `.codeium/windsurf/mcp_config.json` 中添加：
+Add to `.codeium/windsurf/mcp_config.json`:
 
 ```json
 {
@@ -67,9 +67,9 @@ PORT=9000 node simple-mcp-fileserver.js
 }
 ```
 
-### 方法三：使用官方 MCP 文件系统服务器
+### Method 3: Use Official MCP Filesystem Server
 
-如果你遇到兼容性问题，也可以使用官方 MCP 文件系统服务器：
+If you encounter compatibility issues, you can use the official MCP filesystem server:
 
 ```json
 {
@@ -86,13 +86,13 @@ PORT=9000 node simple-mcp-fileserver.js
 }
 ```
 
-## API 参考
+## API Reference
 
 ### initialize
 
-初始化连接并获取服务器能力。
+Initialize connection and get server capabilities.
 
-**请求**：
+**Request**:
 ```json
 {
   "jsonrpc": "2.0",
@@ -102,7 +102,7 @@ PORT=9000 node simple-mcp-fileserver.js
 }
 ```
 
-**响应**：
+**Response**:
 ```json
 {
   "jsonrpc": "2.0",
@@ -122,9 +122,9 @@ PORT=9000 node simple-mcp-fileserver.js
 
 ### readFile
 
-读取文件内容。
+Read file content.
 
-**请求**：
+**Request**:
 ```json
 {
   "jsonrpc": "2.0",
@@ -134,33 +134,33 @@ PORT=9000 node simple-mcp-fileserver.js
 }
 ```
 
-**响应**：
+**Response**:
 ```json
 {
   "jsonrpc": "2.0",
-  "result": "文件内容...",
+  "result": "file content...",
   "id": 2
 }
 ```
 
 ### writeFile
 
-写入文件内容。
+Write file content.
 
-**请求**：
+**Request**:
 ```json
 {
   "jsonrpc": "2.0",
   "method": "writeFile",
   "params": { 
     "path": "/path/to/file.txt",
-    "content": "要写入的内容"
+    "content": "content to write"
   },
   "id": 3
 }
 ```
 
-**响应**：
+**Response**:
 ```json
 {
   "jsonrpc": "2.0",
@@ -171,9 +171,9 @@ PORT=9000 node simple-mcp-fileserver.js
 
 ### listDir
 
-列出目录内容。
+List directory contents.
 
-**请求**：
+**Request**:
 ```json
 {
   "jsonrpc": "2.0",
@@ -183,7 +183,7 @@ PORT=9000 node simple-mcp-fileserver.js
 }
 ```
 
-**响应**：
+**Response**:
 ```json
 {
   "jsonrpc": "2.0",
@@ -192,35 +192,35 @@ PORT=9000 node simple-mcp-fileserver.js
 }
 ```
 
-## 健康检查
+## Health Check
 
-服务器提供了一个简单的健康检查端点：
+The server provides a simple health check endpoint:
 
 ```bash
 curl http://localhost:8090/health
-# 返回: ok
+# Returns: ok
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **初始化失败**：
-   - 确保服务器正在运行
-   - 检查端口是否被占用
-   - 验证 `/health` 端点是否返回 `ok`
+1. **Initialization Failure**:
+   - Ensure the server is running
+   - Check if the port is in use
+   - Verify the `/health` endpoint returns `ok`
 
-2. **端口冲突**：
-   - 使用 `lsof -i :<端口>` 检查端口占用
-   - 使用不同端口启动服务
+2. **Port Conflicts**:
+   - Use `lsof -i :<port>` to check port usage
+   - Start the service with a different port
 
-3. **权限问题**：
-   - 确保服务器有权限访问请求的文件路径
+3. **Permission Issues**:
+   - Ensure the server has permission to access requested file paths
 
-## 贡献
+## Contributing
 
-欢迎提交 Pull Request 和 Issue！
+Pull Requests and Issues are welcome!
 
-## 许可证
+## License
 
 MIT
