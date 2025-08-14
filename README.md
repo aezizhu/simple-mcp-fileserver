@@ -150,9 +150,9 @@ Initialize connection and get server capabilities.
 
 ### readFile
 
-Read file content.
+Read file content. Supports text, base64, and Data URL encodings.
 
-**Request**:
+**Request (text)**:
 ```json
 {
   "jsonrpc": "2.0",
@@ -162,12 +162,50 @@ Read file content.
 }
 ```
 
-**Response**:
+**Response (text)**:
 ```json
 {
   "jsonrpc": "2.0",
   "result": "file content...",
   "id": 2
+}
+```
+
+**Request (binary, base64)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "readFile",
+  "params": { "path": "/path/to/image.png", "encoding": "base64" },
+  "id": 22
+}
+```
+
+**Response (binary, base64)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "result": { "content": "iVBORw0KGgo...", "encoding": "base64", "mimeType": "image/png", "byteLength": 12345 },
+  "id": 22
+}
+```
+
+**Request (binary, Data URL)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "readFile",
+  "params": { "path": "/path/to/image.png", "encoding": "dataurl" },
+  "id": 23
+}
+```
+
+**Response (binary, Data URL)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "result": { "content": "data:image/png;base64,iVBORw0KGgo...", "encoding": "dataurl", "mimeType": "image/png", "byteLength": 12345 },
+  "id": 23
 }
 ```
 
@@ -228,6 +266,16 @@ The server provides a simple health check endpoint:
 curl http://localhost:8090/health
 # Returns: ok
 ```
+
+## Serving Files Directly
+
+For LLMs that support `image_url` or want to fetch files via HTTP, the server exposes a direct file endpoint:
+
+```bash
+curl "http://localhost:8090/file?path=/absolute/path/to/image.png" --output image.png
+```
+
+This sets the correct `Content-Type` based on the file extension.
 
 ## Troubleshooting
 

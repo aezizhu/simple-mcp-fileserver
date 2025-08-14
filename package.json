@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mime-types": "^2.1.35"
   }
 }

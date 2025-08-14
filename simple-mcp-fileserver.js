@@ -1,5 +1,7 @@
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
+const mime = require('mime-types');
 const app = express();
 
 // Enable CORS for all routes
@@ -38,14 +40,33 @@ app.post('/mcp', (req, res) => {
     console.log('Responding to initialize:', JSON.stringify(response));
     return res.json(response);
   } else if (method === 'readFile') {
-    fs.readFile(params.path, 'utf8', (err, data) => {
+    fs.readFile(params.path, (err, dataBuffer) => {
       if (err) {
         const errorResp = { jsonrpc: '2.0', error: { code: 1, message: err.message }, id };
         console.log('readFile error:', JSON.stringify(errorResp));
         return res.json(errorResp);
       }
-      const okResp = { jsonrpc: '2.0', result: data, id };
-      console.log('readFile success:', JSON.stringify(okResp));
+
+      const requestedEncoding = (params && params.encoding) ? String(params.encoding).toLowerCase() : undefined;
+      const mimeType = mime.lookup(params.path) || 'application/octet-stream';
+      const isLikelyBinaryByMime = /^(image|audio|video)\//.test(mimeType) || /^(application)\/(pdf|zip|octet-stream)/.test(mimeType);
+      const shouldReturnBinary = requestedEncoding === 'base64' || requestedEncoding === 'dataurl' || isLikelyBinaryByMime;
+
+      if (shouldReturnBinary) {
+        const base64Content = dataBuffer.toString('base64');
+        const isDataUrl = requestedEncoding === 'dataurl' || (!requestedEncoding && /^image\//.test(mimeType));
+        const payload = isDataUrl
+          ? { content: `data:${mimeType};base64,${base64Content}`, encoding: 'dataurl', mimeType, byteLength: dataBuffer.length }
+          : { content: base64Content, encoding: 'base64', mimeType, byteLength: dataBuffer.length };
+
+        const okResp = { jsonrpc: '2.0', result: payload, id };
+        console.log('readFile success (binary):', JSON.stringify({ id, mimeType, encoding: payload.encoding, byteLength: dataBuffer.length }));
+        return res.json(okResp);
+      }
+
+      const textContent = dataBuffer.toString('utf8');
+      const okResp = { jsonrpc: '2.0', result: textContent, id };
+      console.log('readFile success (text):', JSON.stringify({ id, mimeType, length: textContent.length }));
       res.json(okResp);
     });
   } else if (method === 'writeFile') {
@@ -84,6 +105,24 @@ const PORT = process.env.PORT || process.env.MCP_PORT || 8090;
 app.get('/health', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send('ok');
+});
+
+// Serve files directly with proper Content-Type for use as URLs (e.g., in image_url)
+app.get('/file', (req, res) => {
+  const filePath = req.query.path;
+  if (!filePath) {
+    return res.status(400).send('Missing "path" query parameter');
+  }
+
+  const resolvedPath = path.resolve(filePath);
+  const mimeType = mime.lookup(resolvedPath) || 'application/octet-stream';
+  res.setHeader('Content-Type', mimeType);
+
+  const stream = fs.createReadStream(resolvedPath);
+  stream.on('error', (err) => {
+    res.status(404).send(err.message);
+  });
+  stream.pipe(res);
 });
 
 app.listen(PORT, () => console.log(`MCP FileServer running on port ${PORT}`));
