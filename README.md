@@ -29,6 +29,7 @@ The server acts as a bridge between AI agents and your file system, translating 
   - Detailed error handling and logging
 - **CORS Support**: Built-in cross-origin support for web client integration
 - **Health Check**: Provides a `/health` endpoint for monitoring and probing
+ - **Multimodal Image Outputs**: `readFile` returns image results that include both `image_url` and base64/data URL forms to be consumed by MCP clients as model inputs
 
 ## Installation
 
@@ -48,6 +49,8 @@ The server acts as a bridge between AI agents and your file system, translating 
 The server configuration is flexible and supports the following environment variables:
 
 - `PORT` or `MCP_PORT`: Specify the server listening port (default: 8090)
+- `ROOT_DIR` or `MCP_ROOT_DIR`: Restrict accessible files to this directory (optional; when set, paths outside are denied)
+- `MAX_FILE_BYTES` or `MCP_MAX_FILE_BYTES`: Maximum allowed file size for `readFile` (default: 26214400 bytes, i.e., 25 MiB)
 
 ## Usage
 
@@ -150,7 +153,7 @@ Initialize connection and get server capabilities.
 
 ### readFile
 
-Read file content. Supports text, base64, and Data URL encodings.
+Read file content. Supports text, base64, and Data URL encodings. For images, returns additional multimodal-friendly fields so clients can route the content into model inputs (not just thumbnails).
 
 **Request (text)**:
 ```json
@@ -185,7 +188,18 @@ Read file content. Supports text, base64, and Data URL encodings.
 ```json
 {
   "jsonrpc": "2.0",
-  "result": { "content": "iVBORw0KGgo...", "encoding": "base64", "mimeType": "image/png", "byteLength": 12345 },
+  "result": {
+    "content": "iVBORw0KGgo...",
+    "encoding": "base64",
+    "mimeType": "image/png",
+    "byteLength": 12345,
+    "uri": "http://localhost:8090/file?path=/abs/path/to/image.png",
+    "contentParts": [
+      { "type": "image_url", "url": "http://localhost:8090/file?path=/abs/path/to/image.png" },
+      { "type": "image_base64", "data": "iVBORw0KGgo...", "mimeType": "image/png" },
+      { "type": "image_data_url", "dataUrl": "data:image/png;base64,iVBORw0KGgo..." }
+    ]
+  },
   "id": 22
 }
 ```
@@ -204,7 +218,18 @@ Read file content. Supports text, base64, and Data URL encodings.
 ```json
 {
   "jsonrpc": "2.0",
-  "result": { "content": "data:image/png;base64,iVBORw0KGgo...", "encoding": "dataurl", "mimeType": "image/png", "byteLength": 12345 },
+  "result": {
+    "content": "data:image/png;base64,iVBORw0KGgo...",
+    "encoding": "dataurl",
+    "mimeType": "image/png",
+    "byteLength": 12345,
+    "uri": "http://localhost:8090/file?path=/abs/path/to/image.png",
+    "contentParts": [
+      { "type": "image_url", "url": "http://localhost:8090/file?path=/abs/path/to/image.png" },
+      { "type": "image_base64", "data": "iVBORw0KGgo...", "mimeType": "image/png" },
+      { "type": "image_data_url", "dataUrl": "data:image/png;base64,iVBORw0KGgo..." }
+    ]
+  },
   "id": 23
 }
 ```
@@ -277,6 +302,18 @@ curl "http://localhost:8090/file?path=/absolute/path/to/image.png" --output imag
 
 This sets the correct `Content-Type` based on the file extension.
 
+### Image vs. Text/Binary Behavior
+
+- Text files: returns a UTF-8 string as before.
+- Non-image binaries (e.g., zip, pdf): return `{ content, encoding: "base64", mimeType, byteLength }` or data URL if requested.
+- Images (png/jpg/webp and others): include additional `uri` and `contentParts` fields to enable multimodal routing in MCP clients while keeping backward compatibility.
+
+### Errors and Limits
+
+- Missing file: JSON-RPC error with code `-32004`.
+- File too large: error with code `-32010` and limit metadata.
+- Invalid parameters or outside `ROOT_DIR`: error with code `-32602`.
+
 ## Troubleshooting
 
 ### Common Issues
@@ -292,6 +329,36 @@ This sets the correct `Content-Type` based on the file extension.
 
 3. **Permission Issues**:
    - Ensure the server has permission to access requested file paths
+
+## Manual verification
+
+Below are example cURL snippets to exercise the image behavior. Replace paths and ports as needed.
+
+1. LM Studio (or any MCP client using HTTP JSON-RPC):
+
+```bash
+curl -s http://localhost:8090/mcp -H 'Content-Type: application/json' -d '{
+  "jsonrpc":"2.0",
+  "method":"readFile",
+  "params": { "path": "/absolute/path/to/cat.png" },
+  "id": 10
+}' | jq '.'
+```
+
+Expected: `result` contains `mimeType: "image/png"`, `content` (base64 or data URL), and `contentParts` with an `image_url`. LM Studio should feed the `image_url` or base64 to the model input when the tool output is wired into prompts.
+
+2. Claude Desktop / Node/Python reference runtimes:
+
+Use the `uri` in `contentParts[0].url` as an image input argument, or pass the data URL directly where supported. For example, a follow-up tool or prompt can include:
+
+```json
+{
+  "type": "image",
+  "source": { "type": "url", "url": "http://localhost:8090/file?path=/absolute/path/to/cat.png" }
+}
+```
+
+Expected: The model consumes the image, not just displays a thumbnail.
 
 ## Security Considerations
 
