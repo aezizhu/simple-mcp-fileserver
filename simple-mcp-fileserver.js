@@ -123,12 +123,17 @@ app.post('/mcp', (req, res) => {
           // Enhance image responses with multimodal-friendly fields while keeping backward compatibility
           if (isImageMime(mimeType)) {
             const uri = buildFileUrl(req, absolutePath);
+            payload.content = {
+              type: 'multimodal',
+              parts: [
+                { type: 'image_url', url: uri },
+                { type: 'image_base64', data: base64Content, mimeType },
+                { type: 'image_data_url', dataUrl: dataUrlValue }
+              ]
+            };
+            payload.encoding = 'multimodal';
             payload.uri = uri;
-            payload.contentParts = [
-              { type: 'image_url', url: uri },
-              { type: 'image_base64', data: base64Content, mimeType },
-              { type: 'image_data_url', dataUrl: dataUrlValue }
-            ];
+            payload.contentParts = payload.content.parts;
           }
 
           const okResp = { jsonrpc: '2.0', result: payload, id };
