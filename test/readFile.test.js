@@ -96,12 +96,14 @@ for (const name of ['pixel.png', 'pixel.jpg', 'pixel.webp']) {
     assert.equal(typeof res.result, 'object');
     assert.ok(res.result.mimeType.startsWith('image/'));
     assert.ok(res.result.byteLength > 0);
-    assert.ok(res.result.encoding === 'dataurl' || res.result.encoding === 'base64' || res.result.encoding === 'multimodal');
+    assert.equal(res.result.encoding, 'multimodal');
     assert.equal(typeof res.result.content, 'object');
     assert.equal(res.result.content.type, 'multimodal');
     assert.ok(Array.isArray(res.result.content.parts));
     assert.ok(typeof res.result.uri === 'string');
     assert.ok(Array.isArray(res.result.contentParts));
+    assert.ok(typeof res.result.base64 === 'string');
+    assert.ok(typeof res.result.dataUrl === 'string');
     const kinds = res.result.contentParts.map(p => p.type).sort();
     assert.deepEqual(kinds, ['image_base64', 'image_data_url', 'image_url']);
   });
