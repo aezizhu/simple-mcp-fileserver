@@ -96,8 +96,10 @@ for (const name of ['pixel.png', 'pixel.jpg', 'pixel.webp']) {
     assert.equal(typeof res.result, 'object');
     assert.ok(res.result.mimeType.startsWith('image/'));
     assert.ok(res.result.byteLength > 0);
-    assert.ok(res.result.encoding === 'dataurl' || res.result.encoding === 'base64');
-    assert.ok(typeof res.result.content === 'string');
+    assert.ok(res.result.encoding === 'dataurl' || res.result.encoding === 'base64' || res.result.encoding === 'multimodal');
+    assert.equal(typeof res.result.content, 'object');
+    assert.equal(res.result.content.type, 'multimodal');
+    assert.ok(Array.isArray(res.result.content.parts));
     assert.ok(typeof res.result.uri === 'string');
     assert.ok(Array.isArray(res.result.contentParts));
     const kinds = res.result.contentParts.map(p => p.type).sort();
