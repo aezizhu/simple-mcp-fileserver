@@ -64,7 +64,12 @@ app.post('/mcp', (req, res) => {
       jsonrpc: '2.0',
       result: {
         capabilities: {
-          readFile: { supported: true, description: 'Read a file from disk' },
+          readFile: { 
+            supported: true, 
+            description: 'Read a file from disk',
+            imageSupport: true,
+            supportedEncodings: ['utf8', 'base64', 'dataurl']
+          },
           writeFile: { supported: true, description: 'Write a file to disk' },
           listDir: { supported: true, description: 'List directory contents' }
         },
@@ -116,27 +121,41 @@ app.post('/mcp', (req, res) => {
           const base64Content = dataBuffer.toString('base64');
           const isDataUrl = requestedEncoding === 'dataurl' || (!requestedEncoding && /^image\//.test(mimeType));
           const dataUrlValue = `data:${mimeType};base64,${base64Content}`;
+          
+          // For images, return the multimodal format that MCP clients expect
+          if (isImageMime(mimeType)) {
+            const uri = buildFileUrl(req, absolutePath);
+            const payload = {
+              content: {
+                type: 'multimodal',
+                parts: [
+                  { type: 'image_url', url: uri },
+                  { type: 'image_base64', data: base64Content, mimeType },
+                  { type: 'image_data_url', dataUrl: dataUrlValue }
+                ]
+              },
+              encoding: requestedEncoding || 'multimodal',
+              mimeType,
+              byteLength: dataBuffer.length,
+              uri: uri,
+              contentParts: [
+                { type: 'image_url', url: uri },
+                { type: 'image_base64', data: base64Content, mimeType },
+                { type: 'image_data_url', dataUrl: dataUrlValue }
+              ],
+              base64: base64Content,
+              dataUrl: dataUrlValue
+            };
+            
+            const okResp = { jsonrpc: '2.0', result: payload, id };
+            console.log('readFile success (image):', JSON.stringify({ id, mimeType, encoding: payload.encoding, byteLength: dataBuffer.length }));
+            return res.json(okResp);
+          }
+          
+          // For other binary files, return base64 or dataurl as requested
           const payload = isDataUrl
             ? { content: dataUrlValue, encoding: 'dataurl', mimeType, byteLength: dataBuffer.length }
             : { content: base64Content, encoding: 'base64', mimeType, byteLength: dataBuffer.length };
-
-          // Enhance image responses with multimodal-friendly fields while keeping backward compatibility
-          if (isImageMime(mimeType)) {
-            const uri = buildFileUrl(req, absolutePath);
-            if (requestedEncoding !== 'base64') {
-              payload.encoding = 'multimodal';
-            }
-            payload.uri = uri;
-            payload.base64 = base64Content;
-            payload.dataUrl = dataUrlValue;
-            payload.contentParts = [
-              { type: 'image_url', url: uri },
-              { type: 'image_base64', data: base64Content, mimeType },
-              { type: 'image_data_url', dataUrl: dataUrlValue }
-            ];
-            // For backward compatibility, keep the content field, but simplify it
-            payload.content = { type: 'multimodal', parts: payload.contentParts };
-          }
 
           const okResp = { jsonrpc: '2.0', result: payload, id };
           console.log('readFile success (binary):', JSON.stringify({ id, mimeType, encoding: payload.encoding, byteLength: dataBuffer.length }));
