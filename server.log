@@ -1,0 +1,7 @@
+MCP FileServer running on port 8095
+Received MCP request: {"jsonrpc":"2.0","method":"visualDescribe","params":{"path":"/Users/aezi/CascadeProjects/mcp-fileserver-autopilot/simple-mcp-fileserver/target_image.jpg","format":"simple","prompt":"What animals do you see in this image?"},"id":4}
+visualDescribe success: {"id":4,"mimeType":"image/jpeg","descriptionLength":220,"format":"simple"}
+Received MCP request: {"jsonrpc":"2.0","method":"visualDescribe","params":{"path":"/Users/aezi/CascadeProjects/mcp-fileserver-autopilot/simple-mcp-fileserver/new_test_image.jpg","format":"simple","prompt":"What do you see in this image? Please describe any animals, objects, or scenes."},"id":5}
+visualDescribe success: {"id":5,"mimeType":"image/jpeg","descriptionLength":220,"format":"simple"}
+Received MCP request: {"jsonrpc":"2.0","method":"visualDescribe","params":{"path":"/Users/aezi/CascadeProjects/mcp-fileserver-autopilot/simple-mcp-fileserver/new_test_image.jpg","format":"detailed","prompt":"Please provide a detailed analysis of this image including any wildlife, environment, and specific features you can identify."},"id":6}
+visualDescribe success: {"id":6,"mimeType":"image/jpeg","descriptionLength":48,"format":"detailed"}

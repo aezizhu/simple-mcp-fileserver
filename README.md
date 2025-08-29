@@ -23,13 +23,17 @@ The server acts as a bridge between AI agents and your file system, translating 
   - Read file content (`readFile` method)
   - Write or overwrite file content (`writeFile` method)
   - List directory contents (`listDir` method)
+- **🎯 Visual AI Integration**:
+  - Describe image content using advanced vision models (`visualDescribe` method)
+  - Multi-provider support (OpenAI GPT-4V, Anthropic Claude, Google Gemini)
+  - Customizable prompts for specific analysis needs
 - **MCP Protocol Compatibility**:
   - Full JSON-RPC 2.0 protocol compliance
   - Supports `initialize` method with capability reporting
   - Detailed error handling and logging
 - **CORS Support**: Built-in cross-origin support for web client integration
 - **Health Check**: Provides a `/health` endpoint for monitoring and probing
- - **Multimodal Image Outputs**: `readFile` returns image results that include both `image_url` and base64/data URL forms to be consumed by MCP clients as model inputs
+- **Multimodal Image Outputs**: `readFile` returns image results that include both `image_url` and base64/data URL forms to be consumed by MCP clients as model inputs
 
 ## Installation
 
@@ -48,9 +52,32 @@ The server acts as a bridge between AI agents and your file system, translating 
 
 The server configuration is flexible and supports the following environment variables:
 
+### Basic Configuration
 - `PORT` or `MCP_PORT`: Specify the server listening port (default: 8090)
 - `ROOT_DIR` or `MCP_ROOT_DIR`: Restrict accessible files to this directory (optional; when set, paths outside are denied)
 - `MAX_FILE_BYTES` or `MCP_MAX_FILE_BYTES`: Maximum allowed file size for `readFile` (default: 26214400 bytes, i.e., 25 MiB)
+
+### Visual AI Configuration
+- `VISION_API_KEY`: Your vision API key (required for visual description)
+- `VISION_PROVIDER`: Vision provider (`openai`, `claude`, `gemini`) (default: `openai`)
+- `VISION_API_ENDPOINT`: Custom API endpoint (optional)
+- `VISION_MODEL`: Specific model name (default: `gpt-4-vision-preview`)
+
+#### Example Configuration
+```bash
+# For OpenAI GPT-4V
+export VISION_API_KEY="sk-your-openai-key"
+export VISION_PROVIDER="openai"
+export VISION_MODEL="gpt-4-vision-preview"
+
+# For Anthropic Claude
+export VISION_API_KEY="sk-ant-your-anthropic-key"
+export VISION_PROVIDER="claude"
+export VISION_MODEL="claude-3-sonnet-20240229"
+
+# Start server
+PORT=8095 node simple-mcp-fileserver.js
+```
 
 ## Usage
 
@@ -140,14 +167,86 @@ Initialize connection and get server capabilities.
   "result": {
     "capabilities": {
       "readFile": { "supported": true, "description": "Read a file from disk" },
+      "visualDescribe": {
+        "supported": true,
+        "description": "Describe image content using vision AI",
+        "requiresVisionAPI": true,
+        "supportedFormats": ["simple", "detailed"]
+      },
       "writeFile": { "supported": true, "description": "Write a file to disk" },
       "listDir": { "supported": true, "description": "List directory contents" }
     },
     "serverName": "simple-mcp-fileserver",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "mcp": "filesystem"
   },
   "id": 1
+}
+```
+
+### visualDescribe
+
+Describe image content using advanced vision AI models. Requires vision API configuration.
+
+**Request (simple format)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "visualDescribe",
+  "params": {
+    "path": "/path/to/image.jpg",
+    "format": "simple",
+    "prompt": "What animals do you see in this image?"
+  },
+  "id": 5
+}
+```
+
+**Response (simple format)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "content": "I can see a beautiful lion standing majestically on the savannah...",
+    "encoding": "text",
+    "mimeType": "text/plain",
+    "imageUri": "http://localhost:8095/file?path=/path/to/image.jpg",
+    "analysisType": "visual_description"
+  },
+  "id": 5
+}
+```
+
+**Request (detailed format)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "visualDescribe",
+  "params": {
+    "path": "/path/to/image.jpg",
+    "format": "detailed",
+    "prompt": "Describe this image in detail, including colors, composition, and any animals present."
+  },
+  "id": 6
+}
+```
+
+**Response (detailed format)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "description": "This is a vibrant photograph showing a majestic lion...",
+    "imageData": {
+      "content": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R8Rqc5K1R5pJyZjZn...",
+      "encoding": "dataurl",
+      "mimeType": "image/jpeg",
+      "byteLength": 55837,
+      "uri": "http://localhost:8095/file?path=/path/to/image.jpg"
+    },
+    "analysisType": "visual_description"
+  },
+  "id": 6
 }
 ```
 
@@ -330,35 +429,73 @@ This sets the correct `Content-Type` based on the file extension.
 3. **Permission Issues**:
    - Ensure the server has permission to access requested file paths
 
-## Manual verification
+## Testing Visual Description
 
-Below are example cURL snippets to exercise the image behavior. Replace paths and ports as needed.
-
-1. LM Studio (or any MCP client using HTTP JSON-RPC):
+The server includes a comprehensive test script for visual description functionality:
 
 ```bash
-curl -s http://localhost:8090/mcp -H 'Content-Type: application/json' -d '{
+# Run the vision test script
+node test-vision.js /path/to/your/image.jpg
+
+# Or run with environment variables
+VISION_API_KEY="your-key" node test-vision.js /path/to/image.jpg
+```
+
+### Manual verification
+
+Below are example cURL snippets to exercise both file reading and visual description. Replace paths and ports as needed.
+
+1. **LM Studio (or any MCP client using HTTP JSON-RPC)**:
+
+```bash
+# Test basic image reading
+curl -s http://localhost:8095/mcp -H 'Content-Type: application/json' -d '{
   "jsonrpc":"2.0",
   "method":"readFile",
-  "params": { "path": "/absolute/path/to/cat.png" },
+  "params": { "path": "/absolute/path/to/animal.jpg" },
   "id": 10
+}' | jq '.'
+
+# Test visual description
+curl -s http://localhost:8095/mcp -H 'Content-Type: application/json' -d '{
+  "jsonrpc":"2.0",
+  "method":"visualDescribe",
+  "params": {
+    "path": "/absolute/path/to/animal.jpg",
+    "format": "simple",
+    "prompt": "What animals do you see in this image?"
+  },
+  "id": 11
 }' | jq '.'
 ```
 
-Expected: `result` contains `mimeType: "image/png"`, `content` (base64 or data URL), and `contentParts` with an `image_url`. LM Studio should feed the `image_url` or base64 to the model input when the tool output is wired into prompts.
+Expected: `result` contains `mimeType: "image/jpeg"`, `content` (base64 or data URL), and `contentParts` with an `image_url`. For visual description, you should receive a text description of the image content.
 
-2. Claude Desktop / Node/Python reference runtimes:
+2. **Claude Desktop / Node/Python reference runtimes**:
 
 Use the `uri` in `contentParts[0].url` as an image input argument, or pass the data URL directly where supported. For example, a follow-up tool or prompt can include:
 
 ```json
 {
   "type": "image",
-  "source": { "type": "url", "url": "http://localhost:8090/file?path=/absolute/path/to/cat.png" }
+  "source": { "type": "url", "url": "http://localhost:8095/file?path=/absolute/path/to/animal.jpg" }
 }
 ```
 
-Expected: The model consumes the image, not just displays a thumbnail.
+Expected: The model consumes the image and can describe its content in detail.
+
+3. **Testing different vision providers**:
+
+```bash
+# Test with OpenAI GPT-4V
+VISION_PROVIDER=openai VISION_API_KEY=sk-your-key node test-vision.js
+
+# Test with Anthropic Claude
+VISION_PROVIDER=claude VISION_API_KEY=sk-ant-your-key node test-vision.js
+
+# Test with Google Gemini
+VISION_PROVIDER=gemini VISION_API_KEY=your-gemini-key node test-vision.js
+```
 
 ## Security Considerations
 
