@@ -24,6 +24,12 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# Test files and assets
+test/fixtures/
+*_test_image.jpg
+*test*.jpg
+animal_test_image.jpg
+
 # Runtime data
 pids
 *.pid
